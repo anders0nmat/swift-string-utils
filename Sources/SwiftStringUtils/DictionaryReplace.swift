@@ -1,6 +1,6 @@
 
 extension String {
-	enum ReplaceOverlapStrategy {
+	public enum ReplaceOverlapStrategy {
 		case shortestMatch, longestMatch
 	}
 }
@@ -27,7 +27,7 @@ extension StringProtocol {
 	// results in "The last Element is accesed with lastEntry"
 	```
 	*/
-	func replacingOccurences(with mapping: [String:String], using strategy: String.ReplaceOverlapStrategy = .longestMatch) -> String {
+	public func replacingOccurences(with mapping: [String:String], using strategy: String.ReplaceOverlapStrategy = .longestMatch) -> String {
 		self.replacingOccurences(with: mapping, selecting: {
 			switch strategy {
 				case .shortestMatch: return $0.first
@@ -154,7 +154,7 @@ extension StringProtocol {
 	// Prints "XX X XC"
 	```
 	*/
-	func replacingOccurences(with mapping: [String:String], selecting: (_ from: [(key: String, advance: Int)]) -> (key: String, advance: Int?)?) -> String {
+	public func replacingOccurences(with mapping: [String:String], selecting: (_ from: [(key: String, advance: Int)]) -> (key: String, advance: Int?)?) -> String {
 		var mapPrefixes: [String : [String]] = [:]
 
 		// Group all overlapping replace cases, e.g. "as", "assist" and "assert" to [ "as": ["as", "assist", "assert"] ]
