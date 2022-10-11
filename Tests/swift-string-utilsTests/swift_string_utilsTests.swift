@@ -1,7 +1,7 @@
 import XCTest
 @testable import SwiftStringUtils
 
-final class swift_string_utilsTests: XCTestCase {
+final class swift_map_replace_Tests: XCTestCase {
 	func testReplacement() throws {
 		XCTAssertEqual(
 			"Hello World, there is Text to find here"
@@ -119,5 +119,146 @@ final class swift_string_utilsTests: XCTestCase {
 			}
 		}, "a a x x x" )
 
+	}
+}
+
+final class swift_CLI_Tests: XCTestCase {
+	func testRawArguments() throws {
+		let cli = CommandLineInterface(
+			arguments: ["file.txt", "output", "main.exe"],
+			processors: [])
+		
+		XCTAssertEqual(cli.unknownArguments.map { $0.value! }, ["file.txt", "output", "main.exe"])
+	}
+
+	func testBinaryFlags() throws {
+		let cli = CommandLineInterface(
+			arguments: ["in.txt", "-verbose", "-testing", "-optimize"],
+			processors: [
+				.binary("verbose"),
+				.binary("testing"),
+				.binary("optimize")
+			])
+
+		XCTAssertEqual(cli.flags, ["verbose", "testing", "optimize"])
+	}
+
+	func testAssociatedValues() throws {
+		let cli = CommandLineInterface(
+			arguments: ["in.txt", "-verbose", "-out", "file.txt"],
+			processors: [
+				.binary("verbose"),
+				.keyValue("out")
+			])
+
+		XCTAssertEqual(cli.singleValueOf("out"), "file.txt")
+	}
+
+	func testMultipleAssociatedValues() throws {
+		let cli = CommandLineInterface(
+			arguments: ["in.txt", "-process", "file1.txt", "file2.txt", "-verbose"],
+			processors: [
+				.binary("verbose"),
+				.keyValue("process", valueCount: .oneOrMore)
+			])
+
+		XCTAssertEqual(cli.valueList(for: "process"), ["file1.txt", "file2.txt"])
+	}
+
+	func testAlias() throws {
+		let cli = CommandLineInterface(arguments: ["in.txt", "-v"],
+			processors: [
+				.binary("verbose"),
+				.alias("v", for: "verbose")
+			])
+
+		XCTAssertEqual(cli.flags, ["verbose"])
+	}
+
+	func testAssociatedCommands() throws {
+		let cli = CommandLineInterface(arguments: ["-wall"],
+			processors: [
+				.binary("wempty"),
+				.binary("wpedantic"),
+				.binary("wunused"),
+				.binary("wdeprecated"),
+				.binary("woverflow"),
+
+				.compound("wall", replacedBy: ["-wempty", "-wpedantic", "-wunused", "-wdeprecated", "-woverflow"])
+			])
+		
+		XCTAssertEqual(cli.flags, ["wempty", "wpedantic", "wunused", "wdeprecated", "woverflow"])
+	}
+
+	func testAssociatedAlias() throws {
+		let cli = CommandLineInterface(arguments: ["in.txt", "-default-out", "out.txt"],
+			processors: [
+				.binary("verbose"),
+				.keyValue("version"),
+				.keyValue("out"),
+
+				.compoundAlias("default-out", for: "out", arguments: ["-verbose", "-version", "1.0"])
+			])
+
+		XCTAssert(cli.contains("verbose"))
+		XCTAssertEqual(cli.singleValueOf("version"), "1.0")
+		XCTAssertEqual(cli.singleValueOf("out"), "out.txt")
+	}
+
+	func testInternalKeyValue() throws {
+		let cli = CommandLineInterface(arguments: ["in.txt", "-version:4.0"],
+			processors: [
+				.keyValuePair("version", separator: ["=", ":"])
+			])
+
+		XCTAssertEqual(cli.singleValueOf("version"), "4.0")
+	}
+
+	func testQuickAlias() throws {
+		let cli = CommandLineInterface(arguments: ["in.txt", "-v"],
+			processors: [
+				.binary(["verbose", "v"])
+			])
+
+		XCTAssertEqual(cli.flags, ["verbose"])
+	}
+
+	func testPlain() throws {
+		print("\n\n\n")
+
+		let cli = CommandLineInterface(
+			arguments: ["in.txt", "-verbose", "-wError", "-warnPedantic", "-std=c99", "-o", "out.txt", "in2.txt"],
+			processors: [
+				.binary("verbose"),
+				.keyValuePair(["warn", "w"], separator: nil),
+				.keyValue("o"),
+				.keyValuePair("std")
+			])
+
+		print("CLI:", cli)
+
+
+		print("Named Arguments:", cli.namedArguments)
+
+		let warnings = Set<String>(cli.namedArguments["warn"]?.compactMap({ $0.value }) ?? [])
+		print("Warning Flags:", warnings)
+
+		if let output_arg = cli.valueList(for: "o"), !output_arg.isEmpty {
+			if output_arg.count > 1 {
+				print("multiple output arguments defined but at most one valid")
+			}
+
+			let out_file_name = output_arg.first!
+			print("Defined output file:", out_file_name)
+		}
+
+		if cli.contains("verbose") {
+			print("Using Verbose mode")
+		}
+
+		let output_file = cli.singleValueOf("out") ?? "main.txt"
+		print("outputting to", output_file)
+
+		print("\n\n\n")
 	}
 }
